@@ -10,7 +10,7 @@ export class AgenteLuis {
   }
 
   async procesarMensaje(mensaje, historial = []) {
-    const tools = this.mcp.getToolsForClaude();
+    const tools = this.mcp ? this.mcp.getToolsForClaude() : [];
     
     const messages = [
       ...historial,
@@ -32,11 +32,13 @@ export class AgenteLuis {
       if (toolUse) {
         console.log(`🔧 Ejecutando herramienta: ${toolUse.name}`);
         
-        // Ejecutar herramienta via MCP
-        const toolResult = await this.mcp.callTool(
-          toolUse.name, 
-          toolUse.input
-        );
+        // Ejecutar herramienta via MCP (si está disponible)
+        let toolResult;
+        if (this.mcp) {
+          toolResult = await this.mcp.callTool(toolUse.name, toolUse.input);
+        } else {
+          toolResult = { error: 'MCP no disponible', simulated: true };
+        }
 
         // Agregar respuesta de Claude al historial
         messages.push({

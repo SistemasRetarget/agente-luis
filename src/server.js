@@ -13,9 +13,16 @@ let taskProcessor = null;
 const sessions = new Map();
 
 export async function startServer(port) {
-  // Conectar a MCP al iniciar
-  mcpClient = new MCPClient();
-  await mcpClient.connect();
+  // Conectar a MCP al iniciar (opcional - el servidor puede funcionar sin MCP)
+  try {
+    mcpClient = new MCPClient();
+    await mcpClient.connect();
+    console.log('✅ MCP Client conectado');
+  } catch (error) {
+    console.warn('⚠️ MCP no disponible:', error.message);
+    console.warn('   El servidor funcionará en modo degradado (sin herramientas MCP)');
+    mcpClient = null;
+  }
   
   agente = new AgenteLuis(mcpClient);
 
@@ -48,7 +55,8 @@ export async function startServer(port) {
     res.json({ 
       status: 'ok', 
       mcpConnected: !!mcpClient?.client,
-      herramientas: mcpClient?.tools?.length || 0
+      herramientas: mcpClient?.tools?.length || 0,
+      timestamp: new Date().toISOString()
     });
   });
 
@@ -127,7 +135,13 @@ export async function startServer(port) {
   // Graceful shutdown
   process.on('SIGINT', async () => {
     console.log('\n👋 Desconectando...');
-    await mcpClient.disconnect();
+    if (mcpClient) {
+      try {
+        await mcpClient.disconnect();
+      } catch (e) {
+        // Ignore disconnect errors
+      }
+    }
     process.exit(0);
   });
 
