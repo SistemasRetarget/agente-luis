@@ -114,47 +114,25 @@ function setupEventListeners() {
     });
 }
 
-// Cargar datos desde Google Sheets
+// Cargar datos desde API del Agente Luis
 async function loadFromGoogleSheets() {
-    // Aquí iría la integración real con Google Sheets API
-    // Por ahora simulamos con los datos del screenshot
+    // Intentar cargar desde API local del agente primero
+    try {
+        const response = await fetch('http://localhost:3000/api/tickets');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.tickets && data.tickets.length > 0) {
+                state.tickets = data.tickets;
+                state.filteredTickets = [...state.tickets];
+                return;
+            }
+        }
+    } catch (error) {
+        console.log('API local no disponible, usando datos de ejemplo:', error.message);
+    }
     
-    const SPREADSHEET_ID = '1murmG-pdc5GkJ1CYc4_1UISRTcipMxPYv2jiH_-7ZIY';
-    const API_KEY = ''; // Se configura en producción
-    
-    // Simulación de datos basados en el screenshot
-    const sampleData = [
-        ['T-01', 'TAC', 'termasaguascalientes.cl', 'RE: Ajustes land Landing excursiones desactualizado — Puyehue assume servicio de excursiones para', 'Página donada |Pendiente OJO: https://theslyde.cl/test/ ya lo habías avanz'],
-        ['T-02', 'Puyehue', 'puyehue.cl', 'RE: Ajustes HT F Botones en página Ven por el Día alineados con borde negro. Susana solicitó', '7 botones {secc |Pendiente'],
-        ['T-03', 'Futangue EN', 'parquefutangue.com/en/', 'Cambios en Fut 8 botones IBE en versión EN apuntaban a paso1.cgi?LANGUAGE=en lugar de /en/pr', 'Todos los links II links al Completado'],
-        ['F-02', 'Futangue EN', 'parquefutangue.com/en/', 'Cambios en Fut Sección Fly Fishing en home EN faltaba imagen y texto del programa', 'Sección agregag Completado'],
-        ['F-03', 'Futangue EN', 'parquefutangue.com/en/', 'Cambios en Fut Botones See More en home EN redirigían a home en español', 'Links corregidos Completado'],
-        ['F-04', 'Futangue EN', 'parquefutangue.com/en/', 'Cambios en Fut Página When to Visit: título sin tipografía correcta + bloque Climate Zones innecesario', 'Bloque Climate 2 Completado'],
-        ['T-04', 'Cabañas', 'cabanas.parquefutangue.com', 'Pendientes sitio Subdominio cabanas.parquefutangue.com sin WordPress ni estructura. DNS apuntaba WordPress insta', 'WordPress insta Completado'],
-        ['T-05', 'Shopify', 'Algodones — Puetalo La Dehes', 'Pendientes sitio App no usadas en Shopify solo mantener costo. Mantener solo: Bsale / Instaleaf / Custom', 'Requiere acceso Bloqueado — espera 2FA Leignah'],
-        ['T-06', 'Futangue EN', 'parquefutangue.com/en/', 'REQ-005 | Futar Duplicado de sección en el Home', 'Eliminar esa du GESTIONANDO POR LEIGNAYH'],
-        ['T-07', 'Puyehue', 'puyehue.cl', 'Chat Luis O7-ma Botones en puyehue.cl/dayspa y puyehue.cl/destino con estilos inconsistentes: sin bc 6 botones Eleme', 'Completado'],
-        ['T-08', 'Puyehue', 'puyehue.cl', '? REQ-003 | Puyehue - Botones Daypass | Necesito aclaraciones (srobleno@tantica.com 05-May-2026)', 'Completado'],
-        ['T-09', 'TAC', 'termasaguascalientes.cl', 'Fwi: Ajustes lan Fwd: Ajustes landing excursiones TAC', 'Pendiente'],
-        ['T-10', 'Puyehue', 'puyehue.cl', 'Fwi: Ajustes lan Fwd: Ajustes HTF ven por el día', 'Pendiente'],
-        ['T-11', 'Futangue EN', 'parquefutangue.com/en/', '? REQ-004 | F 1 ? REQ-004 | Futangue - Landing Nueva | 5 aclaraciones necesarias', 'Pendiente'],
-        ['T-12', 'TAC', 'termasaguascalientes.cl', '? REQ-001 | T 1 ? REQ-001 | TAC - Botones | Necesito aclaración (Tamaño exacto)', 'Pendiente'],
-        ['T-13', 'Futangue EN', 'parquefutangue.com/en/', '? REQ-005 | F 1 ? REQ-005 | Futangue', 'Pendiente']
-    ];
-    
-    state.tickets = sampleData.map((row, index) => ({
-        id: row[COLUMNAS.TICKET],
-        negocio: row[COLUMNAS.NEGOCIO],
-        sitio: row[COLUMNAS.SITIO],
-        origen: row[COLUMNAS.ORIGEN],
-        problema: row[COLUMNAS.PROBLEMA],
-        solucion: row[COLUMNAS.SOLUCION] || '',
-        estado: row[COLUMNAS.ESTADO] || 'Pendiente',
-        fecha: new Date().toISOString(),
-        rowIndex: index + 2 // Fila en el spreadsheet (1-indexed, +1 por header)
-    }));
-    
-    state.filteredTickets = [...state.tickets];
+    // Fallback: datos de ejemplo basados en el screenshot
+    loadSampleData();
 }
 
 // Datos de ejemplo si no hay conexión

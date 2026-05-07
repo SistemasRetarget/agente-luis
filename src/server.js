@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import { MCPClient } from './mcp-client.js';
 import { AgenteLuis } from './agent.js';
 import { TaskProcessor } from './task-processor.js';
@@ -6,6 +7,7 @@ import { GmailAuth } from './gmail-auth.js';
 import { TaskTracker } from './task-tracker.js';
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 let mcpClient = null;
@@ -175,6 +177,34 @@ export async function startServer(port) {
     }
   });
 
+  // API endpoint para el sistema de tickets (formato compatible con ticket-system)
+  app.get('/api/tickets', async (req, res) => {
+    try {
+      const tasks = await taskTracker.getTasks({
+        cliente: req.query.cliente,
+        estado: req.query.estado,
+        prioridad: req.query.prioridad
+      });
+      
+      // Transformar al formato del spreadsheet
+      const tickets = tasks.map((task, index) => ({
+        id: `T-${String(index + 1).padStart(2, '0')}`,
+        ticket: task.id,
+        negocio: task.cliente || 'Desconocido',
+        sitio: task.cambio_url || '',
+        origen: 'sistemas@retarget.cl',
+        problema: task.requerimiento,
+        solucion: task.notas || '',
+        estado: formatEstado(task.estado),
+        fecha: task.createdAt
+      }));
+      
+      res.json({ tickets });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Graceful shutdown
   process.on('SIGINT', async () => {
     console.log('\n👋 Desconectando...');
@@ -201,5 +231,18 @@ export async function startServer(port) {
     console.log(`   POST /supervisor/tasks - Crear tarea`);
     console.log(`   PUT /supervisor/tasks/:id - Actualizar tarea`);
     console.log(`   GET /supervisor/stats  - Estadísticas`);
+    console.log(`   GET /api/tickets  - API para sistema de tickets CSS`);
   });
+}
+
+// Helper para formatear estado al formato del spreadsheet
+function formatEstado(estado) {
+  const mapping = {
+    'pending': 'Pendiente',
+    'in_progress': 'En Progreso',
+    'clarifying': 'En Clarificación',
+    'completed': 'Completado',
+    'failed': 'Fallido'
+  };
+  return mapping[estado] || estado;
 }
