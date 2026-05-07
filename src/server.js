@@ -1,12 +1,15 @@
 import express from 'express';
 import { MCPClient } from './mcp-client.js';
 import { AgenteLuis } from './agent.js';
+import { TaskProcessor } from './task-processor.js';
+import { GmailAuth } from './gmail-auth.js';
 
 const app = express();
 app.use(express.json());
 
 let mcpClient = null;
 let agente = null;
+let taskProcessor = null;
 const sessions = new Map();
 
 export async function startServer(port) {
@@ -59,6 +62,68 @@ export async function startServer(port) {
     res.json({ ok: true });
   });
 
+  // Task Processor - Gmail OAuth
+  app.get('/gmail/auth', async (req, res) => {
+    try {
+      const gmailAuth = new GmailAuth();
+      const url = await gmailAuth.getAuthUrl();
+      res.json({ authUrl: url });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/oauth2callback', async (req, res) => {
+    try {
+      const { code } = req.query;
+      if (!code) return res.status(400).send('Código no proporcionado');
+      
+      const gmailAuth = new GmailAuth();
+      await gmailAuth.saveToken(code);
+      
+      res.send('✅ Autenticación Gmail exitosa. Puedes cerrar esta ventana.');
+    } catch (error) {
+      res.status(500).send(`Error: ${error.message}`);
+    }
+  });
+
+  // Task Processor - Control
+  app.post('/tasks/start', async (req, res) => {
+    try {
+      if (taskProcessor?.processing) {
+        return res.json({ status: 'already_running' });
+      }
+
+      const gmailAuth = new GmailAuth();
+      const auth = await gmailAuth.loadCredentials();
+      
+      taskProcessor = new TaskProcessor(agente, mcpClient);
+      await taskProcessor.initGmail(auth);
+      await taskProcessor.startProcessing(req.body.interval || 5);
+
+      res.json({ status: 'started', interval: req.body.interval || 5 });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/tasks/stop', (req, res) => {
+    if (taskProcessor) {
+      taskProcessor.stopProcessing();
+    }
+    res.json({ status: 'stopped' });
+  });
+
+  app.get('/tasks/history', async (req, res) => {
+    try {
+      const processor = new TaskProcessor(agente, mcpClient);
+      const history = await processor.loadHistory();
+      res.json({ history });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Graceful shutdown
   process.on('SIGINT', async () => {
     console.log('\n👋 Desconectando...');
@@ -68,8 +133,12 @@ export async function startServer(port) {
 
   app.listen(port, () => {
     console.log(`🚀 Agente Luis escuchando en http://localhost:${port}`);
-    console.log(`   POST /chat - Enviar mensajes`);
-    console.log(`   GET /health - Verificar estado`);
-    console.log(`   POST /reset - Limpiar sesiones`);
+    console.log(`   POST /chat        - Enviar mensajes`);
+    console.log(`   GET /health       - Verificar estado`);
+    console.log(`   POST /reset       - Limpiar sesiones`);
+    console.log(`   GET /gmail/auth   - URL autenticación Gmail`);
+    console.log(`   POST /tasks/start - Iniciar procesador de tareas`);
+    console.log(`   POST /tasks/stop  - Detener procesador`);
+    console.log(`   GET /tasks/history - Historial de ejecuciones`);
   });
 }

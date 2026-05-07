@@ -53,6 +53,45 @@ curl -X POST http://localhost:3000/chat \
 | `/chat` | POST | Enviar mensaje al agente |
 | `/health` | GET | Verificar estado |
 | `/reset` | POST | Limpiar sesión |
+| `/gmail/auth` | GET | Obtener URL de autenticación Gmail |
+| `/tasks/start` | POST | Iniciar procesador de tareas |
+| `/tasks/stop` | POST | Detener procesador |
+| `/tasks/history` | GET | Ver historial de tareas ejecutadas |
+
+## Procesador de Tareas (Auto-Administración)
+
+El agente puede leer emails de `sistemas@retarget.cl` con asunto `[TAREA]` o `[TASK]` y ejecutarlas automáticamente:
+
+### 1. Configurar Gmail OAuth
+- Crear proyecto en [Google Cloud Console](https://console.cloud.google.com/)
+- Habilitar Gmail API
+- Crear credenciales OAuth2 (Desktop app)
+- Agregar `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` al `.env`
+
+### 2. Autenticar
+```bash
+curl http://localhost:3000/gmail/auth
+# Abrir URL en navegador y autorizar
+```
+
+### 3. Iniciar procesador
+```bash
+curl -X POST http://localhost:3000/tasks/start \
+  -H "Content-Type: application/json" \
+  -d '{"interval": 5}'
+```
+
+### 4. Enviar tareas por email
+Enviar email a `sistemas@retarget.cl` con:
+- **Asunto:** `[TAREA] Deploy sitio Puyehue`
+- **Contenido:** Descripción de la acción a realizar
+
+El agente:
+1. Lee el email cada 5 minutos
+2. Parsea la tarea con Claude
+3. Ejecuta usando herramientas MCP
+4. Guarda historial en `data/tasks.json`
+5. Marca email como leído si fue exitoso
 
 ## Variables de entorno
 
