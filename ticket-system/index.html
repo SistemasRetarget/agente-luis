@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retarget - Sistema de Gestión de Tickets</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://apis.google.com/js/api.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">R</div>
+                    <span class="logo-text">RETARGET</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <span class="nav-label">Principal</span>
+                    <a href="#" class="nav-item active" data-view="dashboard">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="7" height="7"></rect>
+                        </svg>
+                        Dashboard
+                    </a>
+                    <a href="#" class="nav-item" data-view="tickets">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Tickets
+                        <span class="badge" id="ticket-count">0</span>
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <span class="nav-label">Clientes</span>
+                    <a href="#" class="nav-item" data-client="puyehue">
+                        <span class="client-dot" style="background: #10b981;"></span>
+                        Puyehue
+                    </a>
+                    <a href="#" class="nav-item" data-client="termas">
+                        <span class="client-dot" style="background: #f59e0b;"></span>
+                        Termas Aguas Calientes
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <span class="nav-label">Sistema</span>
+                    <a href="#" class="nav-item" data-view="reports">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        Reportes
+                    </a>
+                    <a href="#" class="nav-item" data-view="settings">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"></path>
+                        </svg>
+                        Configuración
+                    </a>
+                </div>
+            </nav>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <h1 class="page-title">Dashboard</h1>
+                    <p class="page-subtitle">Gestión de tickets y requerimientos</p>
+                </div>
+                <div class="header-right">
+                    <button class="btn btn-secondary" id="refresh-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Actualizar
+                    </button>
+                    <button class="btn btn-primary" id="new-ticket-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Nuevo Ticket
+                    </button>
+                    <div class="user-menu">
+                        <div class="user-avatar">S</div>
+                        <span class="user-name">Sistemas</span>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: #dbeafe; color: #1d4ed8;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-total">0</span>
+                        <span class="stat-label">Total Tickets</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: #fef3c7; color: #d97706;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-pending">0</span>
+                        <span class="stat-label">Pendientes</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: #d1fae5; color: #059669;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-completed">0</span>
+                        <span class="stat-label">Completados</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: #ede9fe; color: #7c3aed;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stat-gestion">0</span>
+                        <span class="stat-label">En Gestión</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <div class="filters-bar">
+                <div class="filter-group">
+                    <label>Negocio:</label>
+                    <select class="filter-select" id="filter-negocio">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Estado:</label>
+                    <select class="filter-select" id="filter-estado">
+                        <option value="">Todos</option>
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="Completado">Completado</option>
+                        <option value="Gestion">En Gestión</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Origen:</label>
+                    <select class="filter-select" id="filter-origen">
+                        <option value="">Todos</option>
+                        <option value="susan">Susan</option>
+                        <option value="otros">Otros</option>
+                    </select>
+                </div>
+                <div class="search-box">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" placeholder="Buscar tickets..." id="search-input">
+                </div>
+            </div>
+            
+            <!-- Tickets Table -->
+            <div class="table-container">
+                <table class="tickets-table">
+                    <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Negocio</th>
+                            <th>Sitio</th>
+                            <th>Origen (Email)</th>
+                            <th>Problema</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tickets-body">
+                        <tr class="loading-row">
+                            <td colspan="7">
+                                <div class="loading">
+                                    <div class="spinner"></div>
+                                    <span>Cargando tickets...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Empty State (hidden by default) -->
+            <div class="empty-state" id="empty-state" style="display: none;">
+                <div class="empty-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                </div>
+                <h3>No hay tickets</h3>
+                <p>No se encontraron tickets con los filtros seleccionados.</p>
+            </div>
+        </main>
+    </div>
+    
+    <!-- New Ticket Modal -->
+    <div class="modal" id="new-ticket-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nuevo Ticket</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form class="modal-form" id="ticket-form">
+                <div class="form-group">
+                    <label>Cliente</label>
+                    <select name="cliente" required>
+                        <option value="">Seleccionar...</option>
+                        <option value="Puyehue">Puyehue</option>
+                        <option value="Termas Aguas Calientes">Termas Aguas Calientes</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Requerimiento</label>
+                    <textarea name="requerimiento" rows="3" required placeholder="Describe el requerimiento..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Prioridad</label>
+                        <select name="prioridad">
+                            <option value="high">Alta</option>
+                            <option value="medium" selected>Media</option>
+                            <option value="low">Baja</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Estado</label>
+                        <select name="estado">
+                            <option value="pending" selected>Pendiente</option>
+                            <option value="in_progress">En Progreso</option>
+                            <option value="clarifying">En Clarificación</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>URL del Cambio (opcional)</label>
+                    <input type="url" name="cambio_url" placeholder="https://github.com/...">
+                </div>
+                <div class="form-group">
+                    <label>Notas</label>
+                    <textarea name="notas" rows="2" placeholder="Notas adicionales..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary modal-cancel">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
