@@ -4,17 +4,20 @@
  * Estructura: Ticket | Negocio | Sitio | Origen(Email) | Problema | Solución | Estado
  */
 
-// Configuración - Cambiar según el entorno
+// Configuración - IMPORTANTE: Actualizar después de desplegar Apps Script
 const CONFIG = {
-    // Opción 1: API local del agente Luis
+    // Opción 1: API local del agente Luis (desarrollo local)
     LOCAL_API: 'http://localhost:3000/api/tickets',
     
-    // Opción 2: Google Apps Script Web App
-    // Reemplazar con tu URL de Apps Script después de desplegar
+    // Opción 2: Google Apps Script Web App (PRODUCCIÓN)
+    // PASOS:
+    // 1. Desplegar appscript-integration.gs en Extensiones > Apps Script
+    // 2. Copiar la URL del Web App (termina en /exec)
+    // 3. Reemplazar aquí:
     APPSCRIPT_API: 'https://script.google.com/macros/s/TU_SCRIPT_ID/exec',
     
-    // Usar Apps Script por defecto (cambiar a false para usar API local)
-    USE_APPSCRIPT: false
+    // Usar Apps Script (true) o API local (false)
+    USE_APPSCRIPT: false  // Cambiar a true después de configurar Apps Script
 };
 
 // Estado de la aplicación

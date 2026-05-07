@@ -10,6 +10,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Servir sistema de tickets CSS como archivos estáticos
+app.use('/tickets', express.static('ticket-system'));
+
+// Redirect root to tickets dashboard
+app.get('/', (req, res) => {
+  res.redirect('/tickets');
+});
+
 let mcpClient = null;
 let agente = null;
 let taskProcessor = null;
