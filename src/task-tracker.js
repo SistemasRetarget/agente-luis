@@ -76,6 +76,7 @@ export class TaskTracker {
       total: this.tasks.length,
       pendientes: this.tasks.filter(t => t.status === 'pending').length,
       en_progreso: this.tasks.filter(t => t.status === 'in_progress').length,
+      clarificando: this.tasks.filter(t => t.status === 'clarifying').length,
       completadas: this.tasks.filter(t => t.status === 'completed').length,
       fallidas: this.tasks.filter(t => t.status === 'failed').length,
       por_cliente: {}

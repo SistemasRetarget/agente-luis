@@ -16,6 +16,7 @@ export class TaskProcessor {
 
   async initGmail(auth) {
     this.gmail = google.gmail({ version: 'v1', auth });
+    this.requirementGatherer = new RequirementGatherer(this.agente, this.gmail);
   }
 
   // Busca emails no leídos con label específico o de remitentes autorizados
@@ -288,23 +289,7 @@ Usa las herramientas MCP disponibles para completar la tarea.
 
         for (const task of tasks) {
           console.log(`🔍 Procesando: ${task.subject}`);
-          
-          const parsed = await this.parseTask(task);
-          if (!parsed) {
-            console.log('❌ No se pudo parsear la tarea');
-            continue;
-          }
-
-          // Si requiere confirmación, notificar pero no ejecutar
-          if (parsed.confirm) {
-            console.log(`⏸️ Tarea requiere confirmación: ${parsed.action} en ${parsed.project}`);
-            await this.sendNotification(task, 'confirm_required', parsed);
-            continue;
-          }
-
-          console.log(`🚀 Ejecutando: ${parsed.action} en ${parsed.project}`);
-          const result = await this.executeTask(parsed, task);
-          
+          const result = await this.processTask(task);
           console.log(`✅ Resultado: ${result.status}`);
           await this.sendNotification(task, result.status, result);
         }
@@ -327,5 +312,11 @@ Usa las herramientas MCP disponibles para completar la tarea.
     // Enviar respuesta al thread del email o log
     console.log(`📨 Notificación [${status}]: ${task.subject}`);
     // TODO: Implementar envío de email de respuesta
+  }
+
+  extractClient(body) {
+    // Extraer nombre del cliente del cuerpo del email
+    const clientMatch = body.match(/cliente[:\s]+([a-zA-Z0-9\-]+)/i);
+    return clientMatch ? clientMatch[1] : null;
   }
 }

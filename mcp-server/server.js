@@ -481,6 +481,19 @@ server.setRequestHandler('tools/list', async () => {
           },
           required: ['cliente', 'requerimiento']
         }
+      },
+      {
+        name: 'requirement_analyze',
+        description: 'Analiza requerimiento para determinar si necesita clarificación',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            email_from: { type: 'string' },
+            subject: { type: 'string' },
+            body: { type: 'string' }
+          },
+          required: ['from', 'subject', 'body']
+        }
       }
     ]
   };
