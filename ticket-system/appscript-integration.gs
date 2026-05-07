@@ -338,3 +338,145 @@ function createInstallableTrigger() {
   
   Logger.log('Trigger de sincronización creado');
 }
+
+/**
+ * Aplica formato corporativo a TODAS las filas del spreadsheet
+ * Útil después de sincronizar desde Gmail
+ */
+function formatAllRows() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    Logger.log('Sheet no encontrado');
+    return;
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    Logger.log('No hay datos para formatear');
+    return;
+  }
+  
+  // Formatear header
+  const headerRange = sheet.getRange(1, 1, 1, HEADERS.length);
+  headerRange.setFontWeight('bold');
+  headerRange.setBackground('#1e293b');
+  headerRange.setFontColor('#ffffff');
+  headerRange.setFontSize(11);
+  
+  // Formatear cada fila de datos
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row[0]) continue; // Saltar filas vacías
+    
+    const estado = row[6] || 'Pendiente';
+    const negocio = row[1] || '';
+    
+    applyFullRowFormatting(sheet, i + 1, estado, negocio);
+  }
+  
+  // Auto-ajustar columnas
+  sheet.autoResizeColumns(1, HEADERS.length);
+  
+  Logger.log(`✅ Formateadas ${data.length - 1} filas con aspecto corporativo`);
+}
+
+/**
+ * Aplica formato completo a una fila (estado + cliente)
+ */
+function applyFullRowFormatting(sheet, row, estado, negocio) {
+  const range = sheet.getRange(row, 1, 1, 7);
+  
+  // Colores de fondo según ESTADO
+  const estadoColors = {
+    'Pendiente': '#fef3c7',
+    'Pendiente OJO': '#fee2e2',
+    'Completado': '#d1fae5',
+    'En Gestión': '#ede9fe',
+    'En Progreso': '#dbeafe',
+    'En Clarificación': '#fce7f3',
+    'Fallido': '#fee2e2'
+  };
+  
+  // Colores según NEGOCIO (bordes sutiles)
+  const negocioColors = {
+    'Puyehue': '#10b981',
+    'TAC': '#f59e0b',
+    'Futangue EN': '#3b82f6',
+    'Futangue ES': '#06b6d4',
+    'Cabañas': '#8b5cf6',
+    'Shopify': '#ec4899',
+    'Pueblo La Dehesa': '#f97316',
+    'Retarget': '#64748b'
+  };
+  
+  // Aplicar color de estado
+  const bgColor = estadoColors[estado] || '#ffffff';
+  range.setBackground(bgColor);
+  
+  // Aplicar color de texto según estado
+  if (estado === 'Completado') {
+    range.setFontColor('#059669');
+    range.setFontWeight('normal');
+  } else if (estado === 'Pendiente OJO' || estado === 'Fallido') {
+    range.setFontColor('#dc2626');
+    range.setFontWeight('bold');
+  } else if (estado === 'En Gestión') {
+    range.setFontColor('#7c3aed');
+    range.setFontWeight('bold');
+  } else {
+    range.setFontColor('#1e293b');
+    range.setFontWeight('normal');
+  }
+  
+  // Formato especial para celda de negocio
+  const negocioRange = sheet.getRange(row, 2);
+  const negocioColor = negocioColors[negocio] || '#64748b';
+  negocioRange.setFontWeight('bold');
+  negocioRange.setFontColor(negocioColor);
+  
+  // Formato para celda de estado
+  const estadoRange = sheet.getRange(row, 7);
+  estadoRange.setHorizontalAlignment('center');
+  
+  // Si está completado, tachar opcionalmente
+  if (estado === 'Completado') {
+    range.setFontLine('line-through');
+  } else {
+    range.setFontLine('none');
+  }
+}
+
+/**
+ * Versión mejorada de syncGantt que también aplica formato
+ * Combina la lógica del usuario con formateo automático
+ */
+function syncGanttConFormato() {
+  // Ejecutar syncGantt original (del código del usuario)
+  syncGantt();
+  
+  // Esperar un momento y aplicar formato
+  Utilities.sleep(1000);
+  formatAllRows();
+  
+  Logger.log('✅ Sincronización completada con formato corporativo');
+}
+
+/**
+ * Crea trigger que ejecuta syncGantt + formato automático
+ */
+function crearTriggerConFormato() {
+  // Eliminar triggers existentes
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'syncGantt' || t.getHandlerFunction() === 'syncGanttConFormato') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  
+  // Crear nuevo trigger
+  ScriptApp.newTrigger('syncGanttConFormato')
+    .timeBased()
+    .everyHours(3)
+    .create();
+  
+  Logger.log('✅ Trigger creado — sincroniza y formatea cada 3 horas');
+}
