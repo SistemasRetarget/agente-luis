@@ -10,11 +10,12 @@ Ve a: https://docs.google.com/spreadsheets/d/1murmG-pdc5GkJ1CYc4_1UISRTcipMxPYv2
 ### 2. Abrir Apps Script Editor
 - En el menú: **Extensiones > Apps Script**
 
-### 3. Copiar el código
-1. Elimina el código por defecto (`function myFunction() {}`)
-2. Copia todo el contenido del archivo `appscript-integration.gs`
-3. Pégalo en el editor de Apps Script
-4. Guarda el proyecto (Ctrl+S)
+### 3. Copiar el código (IMPORTANTE)
+1. **BORRA** el archivo `aspecto.js.html` si existe (clic derecho > Eliminar)
+2. En `Código.gs`, elimina TODO el código existente
+3. Copia todo el contenido del archivo `Codigo.gs` (nuevo, unificado)
+4. Pégalo en `Código.gs`
+5. Guarda el proyecto (Ctrl+S)
 
 ### 4. Desplegar como Web App
 1. Haz clic en **Desplegar > Nuevo despliegue**
@@ -65,15 +66,24 @@ fetch('https://script.google.com/macros/s/TU_ID/exec?action=create', {
 });
 ```
 
-## Sincronización Automática
+## Sincronización Automática (Todo en Uno)
 
-Para sincronizar automáticamente cada 5 minutos:
+El nuevo `Codigo.gs` combina **sync + aspecto** automáticamente:
 
-1. En Apps Script: **Reloj > Agregar trigger**
-2. Función: `syncFromTaskTracker`
-3. Evento: `Basado en tiempo`
-4. Tipo de timer: `Minutos`
-5. Intervalo: `Cada 5 minutos`
+### Opción A: Ejecutar función directamente
+```javascript
+crearTriggerSync()  // Crea trigger cada 10 min, horario 8am-19:00
+```
+
+### Opción B: Manual desde el editor
+1. Ejecuta `ejecutarAhora()` - Sync + aspecto inmediato
+2. Ejecuta `soloAspecto()` - Solo formatear sin sync
+3. Ejecuta `soloSync()` - Solo sync sin formatear
+
+### Funciones principales:
+- `syncGanttConAspecto()` - Sync Gmail + aplicar colores
+- `sincronizarDesdeGmail()` - Solo leer emails y agregar filas
+- `aplicarAspectoCorporativo()` - Formatear TODO el spreadsheet
 
 ## Formato del Spreadsheet
 
