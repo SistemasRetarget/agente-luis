@@ -448,9 +448,25 @@ function applyFullRowFormatting(sheet, row, estado, negocio) {
 
 /**
  * Versión mejorada de syncGantt que también aplica formato
+ * Solo ejecuta en horario laboral: 8:00 - 19:00
  * Combina la lógica del usuario con formateo automático
  */
 function syncGanttConFormato() {
+  // Verificar horario laboral (8am - 19:00)
+  const ahora = new Date();
+  const hora = ahora.getHours();
+  const minuto = ahora.getMinutes();
+  
+  // Horario laboral: 8:00 a 19:00
+  const enHorarioLaboral = hora >= 8 && hora < 19;
+  
+  if (!enHorarioLaboral) {
+    Logger.log(`⏸️ Fuera de horario laboral (${hora}:${minuto}). Horario: 8:00-19:00`);
+    return;
+  }
+  
+  Logger.log(`🕐 Horario laboral activo (${hora}:${minuto}). Ejecutando sync...`);
+  
   // Ejecutar syncGantt original (del código del usuario)
   syncGantt();
   
@@ -463,20 +479,24 @@ function syncGanttConFormato() {
 
 /**
  * Crea trigger que ejecuta syncGantt + formato automático
+ * Cada 10 minutos, pero solo procesa en horario 8am-19:00
  */
 function crearTriggerConFormato() {
   // Eliminar triggers existentes
   ScriptApp.getProjectTriggers().forEach(t => {
-    if (t.getHandlerFunction() === 'syncGantt' || t.getHandlerFunction() === 'syncGanttConFormato') {
+    if (t.getHandlerFunction() === 'syncGantt' || 
+        t.getHandlerFunction() === 'syncGanttConFormato' ||
+        t.getHandlerFunction() === 'syncGanttConHorario') {
       ScriptApp.deleteTrigger(t);
     }
   });
   
-  // Crear nuevo trigger
+  // Crear nuevo trigger cada 10 minutos
   ScriptApp.newTrigger('syncGanttConFormato')
     .timeBased()
-    .everyHours(3)
+    .everyMinutes(10)
     .create();
   
-  Logger.log('✅ Trigger creado — sincroniza y formatea cada 3 horas');
+  Logger.log('✅ Trigger creado — revisa cada 10 minutos (activo 8:00-19:00)');
+  Logger.log('   Fuera de horario: se pausa automáticamente');
 }
