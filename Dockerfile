@@ -9,11 +9,12 @@ RUN npm install --production
 # Copiar código
 COPY . .
 
-# Puerto
-EXPOSE 3000
+# Puerto (Cloud Run usa PORT=8080 por defecto)
+ENV PORT=8080
+EXPOSE 8080
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 8080) + '/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
 
 CMD ["node", "src/index.js"]
