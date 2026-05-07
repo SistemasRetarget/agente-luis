@@ -4,6 +4,19 @@
  * Estructura: Ticket | Negocio | Sitio | Origen(Email) | Problema | Solución | Estado
  */
 
+// Configuración - Cambiar según el entorno
+const CONFIG = {
+    // Opción 1: API local del agente Luis
+    LOCAL_API: 'http://localhost:3000/api/tickets',
+    
+    // Opción 2: Google Apps Script Web App
+    // Reemplazar con tu URL de Apps Script después de desplegar
+    APPSCRIPT_API: 'https://script.google.com/macros/s/TU_SCRIPT_ID/exec',
+    
+    // Usar Apps Script por defecto (cambiar a false para usar API local)
+    USE_APPSCRIPT: false
+};
+
 // Estado de la aplicación
 const state = {
     tickets: [],
@@ -114,24 +127,26 @@ function setupEventListeners() {
     });
 }
 
-// Cargar datos desde API del Agente Luis
+// Cargar datos desde API (local o Apps Script)
 async function loadFromGoogleSheets() {
-    // Intentar cargar desde API local del agente primero
+    const apiUrl = CONFIG.USE_APPSCRIPT ? CONFIG.APPSCRIPT_API : CONFIG.LOCAL_API;
+    
     try {
-        const response = await fetch('http://localhost:3000/api/tickets');
+        const response = await fetch(apiUrl + '?action=list');
         if (response.ok) {
             const data = await response.json();
             if (data.tickets && data.tickets.length > 0) {
                 state.tickets = data.tickets;
                 state.filteredTickets = [...state.tickets];
+                console.log(`Cargados ${data.tickets.length} tickets desde ${CONFIG.USE_APPSCRIPT ? 'Apps Script' : 'API local'}`);
                 return;
             }
         }
     } catch (error) {
-        console.log('API local no disponible, usando datos de ejemplo:', error.message);
+        console.log('API no disponible, usando datos de ejemplo:', error.message);
     }
     
-    // Fallback: datos de ejemplo basados en el screenshot
+    // Fallback: datos de ejemplo
     loadSampleData();
 }
 
