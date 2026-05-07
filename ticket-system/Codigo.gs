@@ -5,7 +5,8 @@
  * INSTRUCCIONES:
  * 1. Copiar TODO este código a Código.gs en Apps Script
  * 2. Borrar archivos: aspecto.js.html (si existe)
- * 3. Ejecutar: crearTriggerSync()
+ * 3. Ejecutar manualmente: ejecutarAhora() o ejecutarForzado() (ignora horario)
+ * 4. O crear trigger: crearTriggerSync() (respeta horario 8am-19:00)
  */
 
 // ==================== CONFIGURACIÓN ====================
@@ -52,15 +53,23 @@ const COLORES_CLIENTE = {
 
 /**
  * Sincroniza Gmail → Gantt + Aplica aspecto corporativo
- * Solo ejecuta en horario laboral (8am-19:00)
+ * Solo ejecuta en horario laboral (8am-19:00) cuando es trigger automático
  * Trigger: cada 10 minutos
  */
 function syncGanttConAspecto() {
-  // Verificar horario laboral
+  syncGanttConAspectoInterno(false);
+}
+
+/**
+ * Versión interna con parámetro para forzar ejecución
+ * @param {boolean} forzar - true ignora horario laboral
+ */
+function syncGanttConAspectoInterno(forzar) {
+  // Verificar horario laboral (solo si no forzado)
   const ahora = new Date();
   const hora = ahora.getHours();
   
-  if (hora < 8 || hora >= 19) {
+  if (!forzar && (hora < 8 || hora >= 19)) {
     Logger.log(`⏸️ Fuera de horario (${hora}:00). Horario: 8:00-19:00`);
     return;
   }
@@ -259,11 +268,11 @@ function crearTriggerSync() {
 }
 
 /**
- * Ejecutar manualmente para prueba
+ * Ejecutar manualmente para prueba (ignora horario laboral)
  */
 function ejecutarAhora() {
-  Logger.log('▶️ Ejecutando manualmente...');
-  syncGanttConAspecto();
+  Logger.log('▶️ Ejecutando manualmente (ignorando horario)...');
+  syncGanttConAspectoInterno(true);  // true = forzar, ignora horario
 }
 
 /**
@@ -280,6 +289,14 @@ function soloAspecto() {
 function soloSync() {
   Logger.log('📝 Solo sincronizando...');
   sincronizarDesdeGmail();
+}
+
+/**
+ * Ejecutar manualmente FORZADO (ignora cualquier restricción)
+ */
+function ejecutarForzado() {
+  Logger.log('⚡ Ejecución FORZADA - ignorando horario y restricciones');
+  syncGanttConAspectoInterno(true);
 }
 
 // ==================== API ENDPOINTS (opcional) ====================
