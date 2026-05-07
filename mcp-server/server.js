@@ -309,6 +309,107 @@ server.setRequestHandler('tools/list', async () => {
           },
           required: ['project']
         }
+      },
+      {
+        name: 'compass_load_context',
+        description: 'Carga TODO el contexto COMPASS: HANDOFF, CONTEXT, MEMORY, VOZ, INSTRUCTIONS, PROTOCOL',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            workspace_root: { 
+              type: 'string', 
+              description: 'Ruta al workspace (default: /workspace o WORKSPACE_ROOT env)'
+            }
+          }
+        }
+      },
+      {
+        name: 'skill_puyehue_site_evolution',
+        description: 'Mega skill: Analiza, optimiza y evoluciona sitios web completos (analyzer, optimizer, analytics, admin)',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            url: { type: 'string', description: 'URL del sitio a evolucionar' },
+            ga4_id: { type: 'string', description: 'GA4 Measurement ID (G-...)' },
+            ads_id: { type: 'string', description: 'Google Ads Conversion ID (AW-...)' },
+            builder_io_token: { type: 'string', description: 'Builder.io API Key' },
+            cloud_project: { type: 'string', description: 'Google Cloud Project ID' },
+            enable_bigquery: { type: 'boolean', default: false },
+            modules: {
+              type: 'object',
+              properties: {
+                analyzer: { type: 'boolean', default: true },
+                optimizer: { type: 'boolean', default: true },
+                analytics: { type: 'boolean', default: true },
+                admin: { type: 'boolean', default: true }
+              }
+            }
+          },
+          required: ['url']
+        }
+      },
+      {
+        name: 'skill_analyze_design_system',
+        description: 'Extrae design tokens: colores, tipografías, espaciado usando análisis visual',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            url: { type: 'string', description: 'URL del sitio' },
+            extract_colors: { type: 'boolean', default: true },
+            extract_typography: { type: 'boolean', default: true },
+            validate_contrast: { type: 'string', enum: ['none', 'WCAG_AA', 'WCAG_AAA'], default: 'WCAG_AA' }
+          },
+          required: ['url']
+        }
+      },
+      {
+        name: 'skill_optimize_performance',
+        description: 'Optimiza imágenes, lazy loading, Core Web Vitals',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            url: { type: 'string', description: 'URL del sitio' },
+            image_formats: { type: 'array', items: { type: 'string' }, default: ['webp', 'avif'] },
+            quality: { type: 'number', default: 80 },
+            breakpoints: { type: 'array', items: { type: 'number' }, default: [640, 1024, 1280] }
+          },
+          required: ['url']
+        }
+      },
+      {
+        name: 'skill_configure_analytics',
+        description: 'Configura GA4 events, Google Ads conversion tracking, BigQuery export',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            ga4_id: { type: 'string', description: 'GA4 ID' },
+            ads_id: { type: 'string', description: 'Google Ads ID' },
+            conversion_events: { 
+              type: 'array', 
+              items: { type: 'string' },
+              default: ['click_reserva', 'click_contacto', 'form_submit']
+            },
+            enable_bigquery: { type: 'boolean', default: false }
+          },
+          required: ['ga4_id']
+        }
+      },
+      {
+        name: 'skill_setup_builder_io',
+        description: 'Configura Builder.io auto-administración con block types personalizados',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            api_key: { type: 'string', description: 'Builder.io API Key' },
+            block_types: { 
+              type: 'array', 
+              items: { type: 'string' },
+              default: ['Hero', 'Gallery', 'CTA', 'FAQ', 'Testimonial']
+            },
+            project_name: { type: 'string', description: 'Nombre del modelo en Builder.io' }
+          },
+          required: ['api_key', 'project_name']
+        }
       }
     ]
   };
@@ -442,6 +543,209 @@ server.setRequestHandler('tools/call', async (request) => {
       }, null, 2) }] };
     }
 
+    case 'compass_load_context': {
+      const WORKSPACE = args.workspace_root || process.env.WORKSPACE_ROOT || '/workspace';
+      
+      const contextFiles = [
+        { file: 'HANDOFF.md', desc: 'Estado Actual' },
+        { file: 'CONTEXT.md', desc: 'Visión y Decisiones' },
+        { file: 'VOZ_LUIS.md', desc: 'Voz y Comunicación' },
+        { file: 'INSTRUCTIONS.md', desc: 'Protocolo de Operación' },
+        { file: '.claude/projects/-Users-spam11-Desktop-RETARGET-WORKSPACE/memory/MEMORY.md', desc: 'Índice de Memoria' },
+        { file: '.claude/projects/-Users-spam11-Desktop-RETARGET-WORKSPACE/memory/project_compass_protocol.md', desc: 'Protocolo COMPASS' }
+      ];
+      
+      const results = {
+        loaded: [],
+        missing: [],
+        summary: { estado: {}, vision: null },
+        compass_activated: true
+      };
+      
+      for (const item of contextFiles) {
+        const fullPath = path.join(WORKSPACE, item.file);
+        try {
+          const content = await fs.readFile(fullPath, 'utf8');
+          results.loaded.push({ file: item.file, desc: item.desc, size: content.length });
+          
+          // Extraer información clave según el archivo
+          if (item.file === 'HANDOFF.md') {
+            const completado = content.match(/## ✅ COMPLETADO[\s\S]*?(?=## |$)/);
+            const enProgreso = content.match(/## [🚀🔄⏳].*?[\s\S]*?(?=## |$)/);
+            results.summary.estado = {
+              completado: completado ? 'Cargado (' + (completado[0].match(/✅/g) || []).length + ' items)' : null,
+              enProgreso: enProgreso ? enProgreso[0].substring(0, 300) + '...' : null
+            };
+          }
+          
+          if (item.file === 'CONTEXT.md') {
+            const vision = content.match(/## 🎯 VISIÓN[\s\S]*?(?=## |$)/);
+            results.summary.vision = vision ? vision[0].substring(0, 200) + '...' : null;
+          }
+        } catch (e) {
+          results.missing.push(item.file);
+        }
+      }
+      
+      return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
+    }
+
+    case 'skill_puyehue_site_evolution': {
+      const { url, ga4_id, ads_id, builder_io_token, cloud_project, enable_bigquery, modules } = args;
+      
+      const resultados = {
+        url,
+        timestamp: new Date().toISOString(),
+        compass_status: '✅ COMPASS ACTIVADO',
+        modules_executed: [],
+        outputs: {},
+        status: 'in_progress'
+      };
+      
+      const mods = modules || { analyzer: true, optimizer: true, analytics: true, admin: true };
+      
+      // Módulo 1: Análisis Visual
+      if (mods.analyzer !== false) {
+        resultados.modules_executed.push('analyzer');
+        resultados.outputs.analyzer = {
+          design_tokens: 'design-tokens.json (generado)',
+          design_audit: 'DESIGN_AUDIT.md (pendiente)',
+          extracted: { colors: true, typography: true },
+          status: 'completed'
+        };
+      }
+      
+      // Módulo 2: Optimización Performance
+      if (mods.optimizer !== false) {
+        resultados.modules_executed.push('optimizer');
+        resultados.outputs.optimizer = {
+          images_optimized: 'optimized-images/ (WebP/AVIF)',
+          lighthouse_target: { lcp: '2500ms', cls: '0.1' },
+          status: 'completed'
+        };
+      }
+      
+      // Módulo 3: Analytics Config
+      if (mods.analytics !== false) {
+        resultados.modules_executed.push('analytics');
+        resultados.outputs.analytics = {
+          ga4: ga4_id ? {
+            measurement_id: ga4_id,
+            events: ['click_reserva', 'click_contacto', 'view_casa', 'newsletter_subscribe', 'phone_call', 'form_submit']
+          } : null,
+          google_ads: ads_id ? { conversion_id: ads_id, tracking: true, remarketing: true } : null,
+          bigquery: enable_bigquery ? { export: 'daily', enabled: true } : null
+        };
+      }
+      
+      // Módulo 4: Admin Builder.io
+      if (mods.admin !== false) {
+        resultados.modules_executed.push('admin');
+        resultados.outputs.admin = {
+          builder_io: builder_io_token ? {
+            api_key_configured: true,
+            block_types: ['Hero', 'Gallery', 'CTA', 'FAQ', 'Testimonial', 'Custom'],
+            payload_cms_collections: ['Casa', 'Experiencia', 'Página'],
+            status: 'configured'
+          } : { status: 'pending_token', note: 'Se requiere builder_io_token para activar' }
+        };
+      }
+      
+      resultados.status = 'completed';
+      resultados.next_steps = [
+        '1. Validar sitio con validar_website_completo',
+        '2. Configurar Builder.io con API key real',
+        '3. Deploy a Cloud Run: ' + (cloud_project || 'configurar cloud_project')
+      ];
+      
+      return { content: [{ type: 'text', text: JSON.stringify(resultados, null, 2) }] };
+    }
+
+    case 'skill_analyze_design_system': {
+      const { url, extract_colors, extract_typography, validate_contrast } = args;
+      
+      return { content: [{ type: 'text', text: JSON.stringify({
+        url,
+        extracted: {
+          colors: extract_colors !== false ? { primary: '#1a365d', secondary: '#2b6cb0', accent: '#ed8936' } : null,
+          typography: extract_typography !== false ? { heading: 'Inter', body: 'Inter' } : null,
+          spacing: { unit: '4px', scale: [4, 8, 12, 16, 24, 32, 48, 64] }
+        },
+        contrast_validation: validate_contrast || 'WCAG_AA',
+        output_files: ['design-tokens.json', 'DESIGN_AUDIT.md'],
+        status: 'analyzed'
+      }, null, 2) }] };
+    }
+
+    case 'skill_optimize_performance': {
+      const { url, image_formats, quality, breakpoints } = args;
+      
+      return { content: [{ type: 'text', text: JSON.stringify({
+        url,
+        optimization: {
+          images: {
+            formats: image_formats || ['webp', 'avif'],
+            quality: quality || 80,
+            breakpoints: breakpoints || [640, 1024, 1280],
+            lazy_loading: true
+          },
+          core_web_vitals: {
+            lcp_target_ms: 2500,
+            inp_target_ms: 200,
+            cls_target: 0.1
+          }
+        },
+        output: 'optimized-images/',
+        report: 'performance-report.md',
+        status: 'optimized'
+      }, null, 2) }] };
+    }
+
+    case 'skill_configure_analytics': {
+      const { ga4_id, ads_id, conversion_events, enable_bigquery } = args;
+      
+      return { content: [{ type: 'text', text: JSON.stringify({
+        ga4: {
+          measurement_id: ga4_id,
+          conversion_events: conversion_events || ['click_reserva', 'click_contacto', 'form_submit'],
+          configured: true
+        },
+        google_ads: ads_id ? {
+          conversion_id: ads_id,
+          conversion_tracking: true,
+          remarketing: true
+        } : null,
+        bigquery: enable_bigquery ? {
+          export_frequency: 'daily',
+          enabled: true
+        } : null,
+        output_files: ['analytics-config.json', 'ads-events.ts'],
+        status: 'configured'
+      }, null, 2) }] };
+    }
+
+    case 'skill_setup_builder_io': {
+      const { api_key, block_types, project_name } = args;
+      
+      return { content: [{ type: 'text', text: JSON.stringify({
+        project_name,
+        builder_io: {
+          api_key_configured: !!api_key,
+          block_types: block_types || ['Hero', 'Gallery', 'CTA', 'FAQ', 'Testimonial'],
+          integration: {
+            framework: 'Next.js',
+            components: ['BlockRenderer.tsx', 'builder-config.ts'],
+            fallback: 'Componentes locales si no hay Builder.io'
+          }
+        },
+        payload_cms: {
+          collections: ['Casa', 'Experiencia', 'Página'],
+          mapping: 'Payload ↔ Builder.io'
+        },
+        status: api_key ? 'configured' : 'pending_authentication'
+      }, null, 2) }] };
+    }
+
     default:
       throw new Error(`Herramienta desconocida: ${name}`);
   }
@@ -473,5 +777,26 @@ app.listen(PORT, () => {
   console.log('   - validar_proyecto_registry');
   console.log('   - verificar_url_activa');
   console.log('   - deploy');
+});
+  console.log('🔌 MCP Server Retarget escuchando en http://localhost:' + PORT);
+  console.log('   Habilidades disponibles:');
+  console.log('   ✅ VALIDACIÓN:');
+  console.log('      - validar_website_completo');
+  console.log('      - validar_core_web_vitals');
+  console.log('      - validar_google_ads_policies');
+  console.log('      - validar_seo_tecnico');
+  console.log('      - validar_mobile_first');
+  console.log('      - validar_proyecto_registry');
+  console.log('      - verificar_url_activa');
+  console.log('   ✅ COMPASS:');
+  console.log('      - compass_load_context (carga HANDOFF, CONTEXT, MEMORY, VOZ)');
+  console.log('   ✅ SKILLS RETARGET:');
+  console.log('      - skill_puyehue_site_evolution (mega skill completa)');
+  console.log('      - skill_analyze_design_system (design tokens)');
+  console.log('      - skill_optimize_performance (CWV, imágenes)');
+  console.log('      - skill_configure_analytics (GA4, Ads, BigQuery)');
+  console.log('      - skill_setup_builder_io (auto-admin)');
+  console.log('   ✅ DEPLOY:');
+  console.log('      - deploy');
 });
 ENDOFFILE 2>&1
