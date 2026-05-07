@@ -464,6 +464,23 @@ server.setRequestHandler('tools/list', async () => {
             include_errors: { type: 'boolean', default: true }
           }
         }
+      },
+      {
+        name: 'supervisor_create_task',
+        description: 'Crea tarea para el supervisor (cliente, requerimiento, estado, URL cambio)',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            cliente: { type: 'string', description: 'Nombre del cliente' },
+            requerimiento: { type: 'string', description: 'Descripción del requerimiento' },
+            estado: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'failed'], default: 'pending' },
+            prioridad: { type: 'string', enum: ['high', 'medium', 'low'], default: 'medium' },
+            cambio_url: { type: 'string', description: 'URL del cambio/commit' },
+            commit: { type: 'string', description: 'SHA del commit' },
+            notas: { type: 'string', description: 'Notas adicionales' }
+          },
+          required: ['cliente', 'requerimiento']
+        }
       }
     ]
   };
@@ -897,6 +914,32 @@ server.setRequestHandler('tools/call', async (request) => {
           },
           tasks: include_tasks ? tasks : [],
           errors: include_errors ? errors : []
+        }, null, 2) }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: JSON.stringify({ error: error.message }, null, 2) }] };
+      }
+    }
+
+    case 'supervisor_create_task': {
+      const { cliente, requerimiento, estado, prioridad, cambio_url, commit, notas } = args;
+      
+      try {
+        const TaskTracker = (await import('./task-tracker.js')).TaskTracker;
+        const tracker = new TaskTracker();
+        
+        const task = await tracker.createTask({
+          cliente,
+          requerimiento,
+          estado: estado || 'pending',
+          prioridad: prioridad || 'medium',
+          cambio_url,
+          commit,
+          notas
+        });
+        
+        return { content: [{ type: 'text', text: JSON.stringify({
+          created: true,
+          task: tracker.formatForSupervisor([task])[0]
         }, null, 2) }] };
       } catch (error) {
         return { content: [{ type: 'text', text: JSON.stringify({ error: error.message }, null, 2) }] };

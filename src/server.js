@@ -3,6 +3,7 @@ import { MCPClient } from './mcp-client.js';
 import { AgenteLuis } from './agent.js';
 import { TaskProcessor } from './task-processor.js';
 import { GmailAuth } from './gmail-auth.js';
+import { TaskTracker } from './task-tracker.js';
 
 const app = express();
 app.use(express.json());
@@ -10,6 +11,7 @@ app.use(express.json());
 let mcpClient = null;
 let agente = null;
 let taskProcessor = null;
+let taskTracker = new TaskTracker();
 const sessions = new Map();
 
 export async function startServer(port) {
@@ -132,6 +134,47 @@ export async function startServer(port) {
     }
   });
 
+  // Supervisor endpoints
+  app.get('/supervisor/tasks', async (req, res) => {
+    try {
+      const { cliente, estado, prioridad } = req.query;
+      const tasks = await taskTracker.getTasks({ cliente, estado, prioridad });
+      res.json({ tasks: taskTracker.formatForSupervisor(tasks) });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/supervisor/tasks', async (req, res) => {
+    try {
+      const task = await taskTracker.createTask(req.body);
+      res.json({ task });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/supervisor/tasks/:id', async (req, res) => {
+    try {
+      const task = await taskTracker.updateTask(req.params.id, req.body);
+      if (!task) {
+        return res.status(404).json({ error: 'Tarea no encontrada' });
+      }
+      res.json({ task });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/supervisor/stats', async (req, res) => {
+    try {
+      const stats = await taskTracker.getStats();
+      res.json({ stats });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Graceful shutdown
   process.on('SIGINT', async () => {
     console.log('\n👋 Desconectando...');
@@ -151,8 +194,12 @@ export async function startServer(port) {
     console.log(`   GET /health       - Verificar estado`);
     console.log(`   POST /reset       - Limpiar sesiones`);
     console.log(`   GET /gmail/auth   - URL autenticación Gmail`);
-    console.log(`   POST /tasks/start - Iniciar procesador de tareas`);
+    console.log(`   POST /tasks/start - Iniciar procesador`);
     console.log(`   POST /tasks/stop  - Detener procesador`);
-    console.log(`   GET /tasks/history - Historial de ejecuciones`);
+    console.log(`   GET /tasks/history - Historial tareas`);
+    console.log(`   GET /supervisor/tasks  - Ver tareas (cliente, estado, prioridad)`);
+    console.log(`   POST /supervisor/tasks - Crear tarea`);
+    console.log(`   PUT /supervisor/tasks/:id - Actualizar tarea`);
+    console.log(`   GET /supervisor/stats  - Estadísticas`);
   });
 }
