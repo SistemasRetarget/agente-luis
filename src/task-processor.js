@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { TaskTracker } from './task-tracker.js';
 
 const TASKS_FILE = path.join(process.cwd(), 'data', 'tasks.json');
 
@@ -10,6 +11,7 @@ export class TaskProcessor {
     this.mcp = mcpClient;
     this.gmail = null;
     this.processing = false;
+    this.taskTracker = new TaskTracker();
   }
 
   async initGmail(auth) {
@@ -117,6 +119,15 @@ Responde SOLO en JSON:
       error: null
     };
 
+    // Crear tarea en TaskTracker para el supervisor
+    await this.taskTracker.createTask({
+      cliente: parsed.project || 'desconocido',
+      requerimiento: parsed.details || originalTask.subject,
+      estado: 'in_progress',
+      prioridad: parsed.priority || 'medium',
+      notas: `Procesado desde email: ${originalTask.from}`
+    });
+
     try {
       // Mapeo de acciones a herramientas MCP o comandos
       switch (parsed.action) {
@@ -142,9 +153,28 @@ Responde SOLO en JSON:
       }
 
       execution.status = 'completed';
+      
+      // Actualizar tarea en TaskTracker como completada
+      const tasks = await this.taskTracker.getTasks({ cliente: parsed.project });
+      if (tasks.length > 0) {
+        await this.taskTracker.updateTask(tasks[0].id, {
+          estado: 'completed',
+          notas: tasks[0].notas + '\nCompletado exitosamente',
+          cambio_url: execution.result?.url || execution.result?.commit || null
+        });
+      }
     } catch (error) {
       execution.status = 'failed';
       execution.error = error.message;
+      
+      // Actualizar tarea en TaskTracker como fallida
+      const tasks = await this.taskTracker.getTasks({ cliente: parsed.project });
+      if (tasks.length > 0) {
+        await this.taskTracker.updateTask(tasks[0].id, {
+          estado: 'failed',
+          notas: tasks[0].notas + `\nError: ${error.message}`
+        });
+      }
     }
 
     // Guardar registro
