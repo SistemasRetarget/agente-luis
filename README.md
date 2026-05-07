@@ -57,6 +57,7 @@ curl -X POST http://localhost:3000/chat \
 | `/tasks/start` | POST | Iniciar procesador de tareas |
 | `/tasks/stop` | POST | Detener procesador |
 | `/tasks/history` | GET | Ver historial de tareas ejecutadas |
+| `/supervisor/report` | POST | Generar reporte para supervisor |
 
 ## Procesador de Tareas (Auto-Administración)
 
@@ -102,6 +103,27 @@ El agente:
 | `MCP_SERVER_COMMAND` | Comando para MCP local | - |
 | `PORT` | Puerto del agente | 3000 |
 | `CLAUDE_MODEL` | Modelo Claude | claude-3-5-sonnet-20241022 |
+| `GITHUB_TOKEN` | Token GitHub (para supervisor) | - |
+| `GOOGLE_CLIENT_ID` | Gmail OAuth Client ID | - |
+| `GOOGLE_CLIENT_SECRET` | Gmail OAuth Secret | - |
+
+## Supervisor Mode
+
+El agente puede reportar al supervisor vía GitHub:
+
+```bash
+# Ver issues del repo
+curl -X POST http://localhost:3000/chat \
+  -d '{"mensaje": "Lista los issues abiertos de SistemasRetarget/agente-luis"}'
+
+# Crear issue para reportar
+curl -X POST http://localhost:3000/chat \
+  -d '{"mensaje": "Crea issue en GitHub: Título 'Bug en deploy', Cuerpo 'El servicio no inicia'"}'
+
+# Generar reporte de trabajo
+curl -X POST http://localhost:3000/supervisor/report \
+  -d '{"session_id": "default", "include_tasks": true}'
+```
 
 ## Despliegue en la nube
 

@@ -410,6 +410,60 @@ server.setRequestHandler('tools/list', async () => {
           },
           required: ['api_key', 'project_name']
         }
+      },
+      {
+        name: 'github_list_issues',
+        description: 'Lista issues de un repositorio GitHub',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            owner: { type: 'string', description: 'Owner del repo (ej: SistemasRetarget)' },
+            repo: { type: 'string', description: 'Nombre del repo' },
+            state: { type: 'string', enum: ['open', 'closed', 'all'], default: 'open' },
+            labels: { type: 'string', description: 'Filtrar por labels' }
+          },
+          required: ['owner', 'repo']
+        }
+      },
+      {
+        name: 'github_create_issue',
+        description: 'Crear issue en GitHub para reportar al supervisor',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            owner: { type: 'string', description: 'Owner del repo' },
+            repo: { type: 'string', description: 'Nombre del repo' },
+            title: { type: 'string', description: 'Título del issue' },
+            body: { type: 'string', description: 'Cuerpo del issue (markdown)' },
+            labels: { type: 'array', items: { type: 'string' }, description: 'Labels del issue' }
+          },
+          required: ['owner', 'repo', 'title']
+        }
+      },
+      {
+        name: 'github_get_commit',
+        description: 'Obtener detalles de un commit específico',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            owner: { type: 'string', description: 'Owner del repo' },
+            repo: { type: 'string', description: 'Nombre del repo' },
+            sha: { type: 'string', description: 'SHA del commit' }
+          },
+          required: ['owner', 'repo', 'sha']
+        }
+      },
+      {
+        name: 'supervisor_report',
+        description: 'Genera reporte para el supervisor sobre trabajo realizado',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            session_id: { type: 'string', description: 'ID de sesión a reportar' },
+            include_tasks: { type: 'boolean', default: true },
+            include_errors: { type: 'boolean', default: true }
+          }
+        }
       }
     ]
   };
@@ -746,6 +800,109 @@ server.setRequestHandler('tools/call', async (request) => {
       }, null, 2) }] };
     }
 
+    case 'github_list_issues': {
+      const { owner, repo, state, labels } = args;
+      const url = `https://api.github.com/repos/${owner}/${repo}/issues?state=${state || 'open'}${labels ? `&labels=${labels}` : ''}`;
+      
+      try {
+        const response = await fetch(url, {
+          headers: process.env.GITHUB_TOKEN ? { 'Authorization': `token ${process.env.GITHUB_TOKEN}` } : {}
+        });
+        const issues = await response.json();
+        
+        return { content: [{ type: 'text', text: JSON.stringify({
+          issues: issues.map(i => ({
+            number: i.number,
+            title: i.title,
+            state: i.state,
+            labels: i.labels.map(l => l.name),
+            created_at: i.created_at,
+            url: i.html_url
+          })),
+          count: issues.length
+        }, null, 2) }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: JSON.stringify({ error: error.message }, null, 2) }] };
+      }
+    }
+
+    case 'github_create_issue': {
+      const { owner, repo, title, body, labels } = args;
+      const url = `https://api.github.com/repos/${owner}/${repo}/issues`;
+      
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `token ${process.env.GITHUB_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ title, body, labels })
+        });
+        const issue = await response.json();
+        
+        return { content: [{ type: 'text', text: JSON.stringify({
+          created: true,
+          issue_number: issue.number,
+          url: issue.html_url
+        }, null, 2) }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: JSON.stringify({ error: error.message }, null, 2) }] };
+      }
+    }
+
+    case 'github_get_commit': {
+      const { owner, repo, sha } = args;
+      const url = `https://api.github.com/repos/${owner}/${repo}/commits/${sha}`;
+      
+      try {
+        const response = await fetch(url);
+        const commit = await response.json();
+        
+        return { content: [{ type: 'text', text: JSON.stringify({
+          sha: commit.sha,
+          message: commit.commit.message,
+          author: commit.commit.author.name,
+          date: commit.commit.author.date,
+          url: commit.html_url
+        }, null, 2) }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: JSON.stringify({ error: error.message }, null, 2) }] };
+      }
+    }
+
+    case 'supervisor_report': {
+      const { session_id, include_tasks, include_errors } = args;
+      
+      try {
+        const historyPath = path.join(process.cwd(), 'data', 'tasks.json');
+        let history = [];
+        try {
+          const content = await fs.readFile(historyPath, 'utf8');
+          history = JSON.parse(content);
+        } catch (e) {
+          // No history yet
+        }
+        
+        const tasks = include_tasks ? history.filter(h => h.sessionId === session_id) : [];
+        const errors = include_errors ? history.filter(h => h.status === 'failed') : [];
+        
+        return { content: [{ type: 'text', text: JSON.stringify({
+          session_id,
+          timestamp: new Date().toISOString(),
+          summary: {
+            total_executions: history.length,
+            session_executions: tasks.length,
+            errors_count: errors.length
+          },
+          tasks: include_tasks ? tasks : [],
+          errors: include_errors ? errors : []
+        }, null, 2) }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: JSON.stringify({ error: error.message }, null, 2) }] };
+      }
+    }
+
     default:
       throw new Error(`Herramienta desconocida: ${name}`);
   }
@@ -769,17 +926,6 @@ const PORT = process.env.MCP_PORT || 3001;
 app.listen(PORT, () => {
   console.log('🔌 MCP Server Retarget escuchando en http://localhost:' + PORT);
   console.log('   Habilidades disponibles:');
-  console.log('   - validar_website_completo');
-  console.log('   - validar_core_web_vitals');
-  console.log('   - validar_google_ads_policies');
-  console.log('   - validar_seo_tecnico');
-  console.log('   - validar_mobile_first');
-  console.log('   - validar_proyecto_registry');
-  console.log('   - verificar_url_activa');
-  console.log('   - deploy');
-});
-  console.log('🔌 MCP Server Retarget escuchando en http://localhost:' + PORT);
-  console.log('   Habilidades disponibles:');
   console.log('   ✅ VALIDACIÓN:');
   console.log('      - validar_website_completo');
   console.log('      - validar_core_web_vitals');
@@ -796,7 +942,11 @@ app.listen(PORT, () => {
   console.log('      - skill_optimize_performance (CWV, imágenes)');
   console.log('      - skill_configure_analytics (GA4, Ads, BigQuery)');
   console.log('      - skill_setup_builder_io (auto-admin)');
+  console.log('   ✅ GITHUB/SUPERVISOR:');
+  console.log('      - github_list_issues (leer issues)');
+  console.log('      - github_create_issue (reportar al supervisor)');
+  console.log('      - github_get_commit (detalles de commits)');
+  console.log('      - supervisor_report (reporte de trabajo)');
   console.log('   ✅ DEPLOY:');
   console.log('      - deploy');
 });
-ENDOFFILE 2>&1
